@@ -5,14 +5,13 @@ Created on Tue Oct 15 13:24:00 2024
 
 @author: u2260235
 """
-
-import numpy as np
 import os
-from cellpose import models, io
 import tifffile
-from wakepy import keep
+from cellpose import models
+import numpy as np
+from wakepy import keep  # Assuming 'keep' is a utility for handling long-running code
 
-with keep.running(): # as code takes a long time
+with keep.running():  # Keeps code running for a long time without interruption
     
     # Load the Cellpose model (configure for your GPU/CPU setup)
     model = models.Cellpose(model_type='cyto3')
@@ -33,20 +32,26 @@ with keep.running(): # as code takes a long time
     
             # To collect processed images for the current stack
             processed_masks = []
-    
+            
             # Loop through each image in the stack and process with Cellpose
             for i in range(len(stack)):
                 img = stack[i]
                 masks, flows, styles, diams = model.eval(img, diameter=50, channels=chan)
                 print(f"Progress for {filename}: {i+1}/{len(stack)}")
     
+                # Convert mask to 8-bit
+                masks_8bit = masks.astype(np.uint8)
+                
                 # Append the mask to the list for multi-page TIFF
-                processed_masks.append(masks)
-    
+                processed_masks.append(masks_8bit)
+
+            # Convert list of 8-bit arrays to a single 8-bit array stack
+            processed_masks_stack = np.stack(processed_masks).astype(np.uint8)
+
             # Create the output filename with "_masks" appended
             output_filename = os.path.splitext(filename)[0] + "_masks.tiff"
             output_path = os.path.join(output_folder, output_filename)
     
             # Save the processed masks as a multi-page TIFF
-            tifffile.imwrite(output_path, processed_masks)
+            tifffile.imwrite(output_path, processed_masks_stack, photometric='minisblack')
             print(f"Saved {output_filename}")
