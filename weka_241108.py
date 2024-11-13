@@ -62,3 +62,6 @@ for tiff_file in tiff_files:
 
     # Save the output image
     IJ.saveAs(imp_out, "TIFF", out_path)
+    imp.close();
+
+    
