@@ -59,7 +59,7 @@ for file_indx in range(len(mask_files)):
                 mask_pixels = frame_probs[frame_seg == mask_id]
                 mean_prob = np.mean(mask_pixels)
                 results.append([j, i, mask_id, mean_prob])
-        print("Frame progress for"+basenames[file_indx]+": {j+1}/{masks.shape[0]}")
+        print("Frame progress for "+basenames[file_indx]+": "+str(j+1)+"/"+str(masks.shape[0]))
         
     
     # Convert results to a DataFrame
@@ -86,7 +86,10 @@ for file_indx in range(len(mask_files)):
     
     # export the result to a TIFF file
     # need to work out baze name so it can be saved as a variant
-    tf.imwrite(str(output_mask_probs)+str(basenames[file_indx]+'mask_probs.tiff'), mask_probabilities, metadata={'axes': 'TCYX'})
+    file_output_mask_probs = (str(output_mask_probs)+'/'+str(basenames[file_indx])+'_mask_probs.tiff')
+    tf.imwrite(file_output_mask_probs, mask_probabilities, metadata={'axes': 'TCYX'})
+    print("Saved "+file_output_mask_probs)
+    #tf.imwrite('mask_probs.tiff', mask_probabilities, metadata={'axes': 'TCYX'})
     # The file 'mask_probabilities.tiff' now contains the updated mask stack with mean probabilities for each cell.
 
 #%%
@@ -127,5 +130,10 @@ for i in range(masks_3d.shape[0]):  # Frame
         # set mask value to correct class_id
         mask_classes[i][frame_seg == mask_id] = class_id
 
+# Convert mask_classes to 8-bit (assuming class IDs do not exceed 255)
+mask_classes = np.stack(mask_classes).astype(np.uint8)
+
 # Export the result to a TIFF file
-tf.imwrite('mask_cell_classification.tiff', mask_classes, metadata={'axes': 'TYX'})
+file_output_mask_classes = (str(output_mask_classes)+'/'+str(basenames[file_indx])+'_mask_probs.tiff')
+tf.imwrite(file_output_mask_classes, mask_classes, photometric='minisblack')
+print("Saved "+file_output_mask_classes)
