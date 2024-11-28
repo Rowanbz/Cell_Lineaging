@@ -16,6 +16,7 @@ model_path = str(model_path)
 
 # Get list of all TIFF files in the input directory
 tiff_files = [f for f in os.listdir(input_dir) if f.endswith('.tiff')]
+print(tiff_files)
 
 for tiff_file in tiff_files:
     input_path = os.path.join(input_dir, tiff_file)
@@ -62,6 +63,6 @@ for tiff_file in tiff_files:
 
     # Save the output image
     IJ.saveAs(imp_out, "TIFF", out_path)
-    imp.close();
+    imp_out.close();
 
     
