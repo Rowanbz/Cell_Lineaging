@@ -5,10 +5,20 @@
 \paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
 
-\f0\fs24 \cf0 1. Run 2_cellpose_mask_241111.py through Python\
+\f0\fs24 \cf0 Before: Create the following directories:\
+	1_source\
+	2_masks\
+	3_probs\
+	4_mask_probs\
+	5_mask_classes\
+	6_mask_classes_csv\
+	7_revised_masks\
+1. Run 2_cellpose_mask_241111.py through Python\
 2. Run weka_241108.py through ImageJ\
 	source: 1_source\
 	model: classifier.model\
 	output: 3_probs\
 3. Run 4_mask_probs.py through Python\
+4. Run 7_revise_masks_from_weka.py\
+5. Adjusted masks can then be used for tracking\
 }
