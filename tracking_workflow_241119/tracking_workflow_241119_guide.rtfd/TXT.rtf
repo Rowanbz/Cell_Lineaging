@@ -1,0 +1,36 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2761
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 Manual approach:\
+1. Open file from 1_mask_source in FIJI\
+2. Plugins > Tracking > Trackmate\
+3. Follow prompt to swap Z and T\
+4. Select Label image detector\
+5. Use LAP Tracker\
+	Frame to frame linking: 50\
+	Track segment gap closing: 70, 5\
+	Track segment splitting: OFF #15\
+	Track segment merging: OFF #15\
+\
+Automatic Approach:\
+Before: Create the following directories:\
+	1_mask_source - populate with prob_workflow: 7_revised_masks\
+	2_class_csv_source - populate with prob_workflow: 6_mask_classes_csv\
+	3_tracks - empty\
+	4_mask_track_id - empty\
+\
+To get tracks (3_tracks):\
+1. Run track_cells_250115.py In Fiji\
+2. Run track_cells_add_probs_250124.py in Python\
+\
+To do track_id overlay\
+1. Run cell_mask_track_ids.py in Python\
+2. Run cell_track_id_overlay.ijm in Fiji\
+\
+Detect branches\
+1. Run 250120_detect_branches.py in Python\
+}
