@@ -7,31 +7,31 @@ import os
 # File (label="Select the Weka model", style="file") model_path
 # File (label="Directory to save the output", style="directory") out_dir
 
-input_dir = "//Users/u2260235/Documents/Y3 Project/Segmentation/prob_workflow_241111/1_source"
-model_path = "//Users/u2260235/Documents/Y3 Project/Segmentation/prob_workflow_241111/classifier.model"
-out_dir = "//Users/u2260235/Documents/Y3 Project/Segmentation/prob_workflow_241111/3_probs"
+input_dir = "//Users/u2260235/Documents/Y3 Project/prob_workflow_241111/1_source"
+model_path = "//Users/u2260235/Documents/Y3 Project/prob_workflow_241111/classifier.model"
+out_dir = "//Users/u2260235/Documents/Y3 Project/prob_workflow_241111/3_probs"
 
 input_dir = str(input_dir)
 model_path = str(model_path)
 
-# Get list of all TIFF files in the input directory
+# get list of all TIFF files in the input directory
 tiff_files = [f for f in os.listdir(input_dir) if f.endswith('.tiff')]
 print(tiff_files)
 
 for tiff_file in tiff_files:
     input_path = os.path.join(input_dir, tiff_file)
     
-    # Load the input image
+    # load the input image
     imp_input = IJ.openImage(input_path)
     [w, h, nch, nsl, nfr] = imp_input.getDimensions()
     n = nch * nsl * nfr
-    ncl = 4  # Assuming 4 classes, adjust as needed
+    ncl = 4  # number of classes
 
     title_input = imp_input.getTitle()
     out_name = title_input.replace(".tif", "_prob.tif")
     out_path = os.path.join(out_dir, out_name)
 
-    # Create the output image
+    # create output object
     imp_out = IJ.createImage(out_name, "32-bit black", w, h, ncl, 1, n)
     imp_out.show()
 
@@ -61,7 +61,7 @@ for tiff_file in tiff_files:
     imp_out.updateAndDraw()
     imp_out.show()
 
-    # Save the output image
+    # save tiff
     IJ.saveAs(imp_out, "TIFF", out_path)
     imp_out.close();
 
