@@ -22,6 +22,10 @@ Before: Create the following directories:\
 	2_class_csv_source - populate with prob_workflow: 6_mask_classes_csv\
 	3_tracks - empty\
 	4_mask_track_id - empty\
+	5_tracks_revised\
+	6_tracks_revised_2\
+	7_mask_family_id\
+	8_family_overlay\
 \
 To get tracks (3_tracks):\
 1. Run track_cells_250115.py In Fiji\
@@ -31,6 +35,10 @@ To do track_id overlay\
 1. Run cell_mask_track_ids.py in Python\
 2. Run cell_track_id_overlay.ijm in Fiji\
 \
-Detect branches\
-1. Run 250120_detect_branches.py in Python\
+To add all data to tracks:\
+1. Run track_cells_add_probs_250124.py in Python\
+2. Run 250120_detect_branches.py in Python\
+\
+To colour cells by family_id:\
+1 Run cell_mask_family_ids.py in Python\
 }
