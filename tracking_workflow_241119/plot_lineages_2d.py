@@ -9,63 +9,137 @@ Created on Wed Jan  1 13:31:52 2025
 import numpy as np
 import pandas as pd
 import os
-import tifffile as tf
-import cv2
+import math
+import matplotlib.pyplot as plt
+import seaborn
 
-source_dir = "/Users/u2260235/Documents/Y3 Project/prob_workflow_241111/1_source"
-track_dir = "/Users/u2260235/Documents/Y3 Project/tracking_workflow_241119/3_tracks"
-
-#%%
+py_col = ('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2',
+ '#7f7f7f', '#bcbd22', '#17becf')
 
 def getfilelist (path, filetype):
     file_list = [os.path.join(path, f)
     for f in os.listdir(path)
     if f.endswith(str('.'+filetype))]
     return file_list
+def getoffset(full_division_code, x, default_offset):
+    # remove first character - will always be 0
+    division_code = full_division_code[1:]
+    length = len(division_code)
+    dx = default_offset
+    for i in range(length):
+        if division_code[i] == '0':
+            x = x-dx
+        if division_code[i] == '1':
+            x = x+dx
+        dx = dx*0.5
+    return x, dx
+def plotcell(division_code, x, ax, default_offset, family_df, col):
+    c_cell = family_df.loc[(family_df['division_code'] == division_code)]
+    min_fr = min(c_cell['fr'])
+    max_fr = max(c_cell['fr'])
+    # draw a vertical line from min_fr to max_fr for each frame
+    # line should be offset left or right
+    # Offset halves with each generation
+    x_dx=[0,0]
+    if len(division_code) > 1: # cells with parents
+        x_dx = getoffset(division_code, 0, offset)
+        x=x_dx[0]
+        dx=x_dx[1]
+        #parent_code = division_code[:-1]
+        # check for if the daughter is the left one
+        if division_code[-1] == '0':
+            # link with horizontal lines
+            ax.plot([x, x+4*dx], [min_fr, min_fr], color=col, linewidth=2)
+        ax.text(x,min_fr-0.55,min_fr, horizontalalignment='center')# label  min fr
+    else:
+        ax.text(x,min_fr-0.55,family_id, horizontalalignment='center', color='gray')# label f
+    #  plot vertical line
+    ax.plot([x, x], [min_fr, max_fr+1], color=col, linewidth=2)
+    #ax.text(x,min_fr-0.5,division_code, horizontalalignment='center')# label with division code
+    #ax.text(x,min_fr-0.55,min_fr, horizontalalignment='center')# label  min fr
+    #ax.text(x,max_fr,max_fr, horizontalalignment='center')# label  max fr
 
-def normalisearray (movie, maxval):
-    # converts array to have values from 0-maxval
-    if np.min(movie) < 0:
-        movie_pos = movie + np.min(movie)
-    else: movie_pos = movie
-    movie_norm = (movie_pos-np.min(movie_pos))/(np.max(movie_pos)-np.min(movie_pos))
-    #movie_norm = np.round(movie_norm * maxval) # runs very slow
-    movie_norm = (movie_norm * maxval).astype(np.uint8) # runs very slow
-    return movie_norm
-    
 #%%
 
-source_files=getfilelist(source_dir, 'tiff')
-track_files=getfilelist(track_dir, 'csv')
 
-for file_indx in range(len(track_files)): # goes through every file
-    print("Processing file: {track_files[file_indx]}")
-    # Initialise tracks
-    tracks = pd.read_csv(track_files[file_indx])
-    movie_32bit = tf.imread(source_files[file_indx])
+offset = 1  # Initially offsets by this amount
+track_dir = "/Users/u2260235/Documents/Y3 Project/tracking_workflow_241119/6_tracks_revised_2"
+save_dir = "/Users/u2260235/Documents/Y3 Project/tracking_workflow_241119/10_2d_lineages"
+
+# For testing
+#track_dir = "/Users/u2260235/Documents/Y3 Project/tracking_workflow_241119/test_track_dir"
+#save_dir = "/Users/u2260235/Documents/Y3 Project/tracking_workflow_241119/test_track_dir"
+
+track_files=getfilelist(track_dir, 'csv')
+basenames = [
+    os.path.basename(file).replace("_tracks.csv", "")
+    for file in track_files
+]
+#basenames = ['240408_240411_WT_150nM_pos34']
+
+for file_id in range(len(basenames)): # goes through every file
+    print(f'Processing file: {basenames[file_id]}')
+    track_path = track_dir + '/' + basenames[file_id] + '_tracks.csv'
+    save_path = save_dir + '/' + basenames[file_id] + '.png'
+
+    tracks = pd.read_csv(track_path)
     
-    # normalise data to be in 0-255 range
+    # initialise data
+    tracks['division_code'] = tracks['division_code'].astype(str).str.replace('D_', '')
+    family_ids = np.unique(tracks['family_id'])
+    family_n = len(family_ids)
+    frames = np.unique(tracks['fr'])
     
-    movie_255 = normalisearray(movie_32bit, 255)
+    ncols = min(22, family_n) # max 22 cols
+    nrows = math.ceil(family_n/ncols)
+    
+    # create axis bar for number of frames
+    
+    fig, axes = plt.subplots(nrows,ncols, figsize=(ncols * 1, nrows * 1))
+    axes = np.array(axes).reshape(-1)  # Flatten for 1D indexing
+    
+    for i in range(len(family_ids)):
+        ax = axes[i]
+        family_id=family_ids[i]
+        family = tracks.loc[(tracks['family_id'] == family_id)]
+        cell_ids = np.unique(family['division_code'])
+        col = py_col[i%len(py_col)]
         
-    movie_rgb = np.stack([movie_255] * 3, axis=1)  # frames, CHANNELS, height, width
+        for j in range(len(cell_ids)):
+            #print(cell_ids[i])
+            # plot cell function
+            plotcell(cell_ids[j], 0, ax, offset, family, col)
+
+        # Set the y-axis range to match the frame range
+        ax.set_ylim(min(frames), max(frames))
     
-    track_ids = tracks["track_id"].unique().tolist() # list of track ids
-    for track_id in range(len(track_ids)):
-        current_tr = tracks.loc[tracks['track_id'] == track_id]
-        current_tr = current_tr.sort_values('fr')
-        frames = current_tr['fr'].unique() # get list of all frames - skips spaces
-        for i in range(len(frames) - 1):
-            frame_id = frames[i]
-            next_frame_id = frames[i+1]
-            #print(f"track: {track_id}, frame: {frame_id}")
-            x1 = int(current_tr.loc[current_tr['fr'] == frame_id, 'X'].iloc[0])
-            y1 = int(current_tr.loc[current_tr['fr'] == frame_id, 'Y'].iloc[0])
-            x2 = int(current_tr.loc[current_tr['fr'] == next_frame_id, 'X'].iloc[0])
-            y2 = int(current_tr.loc[current_tr['fr'] == next_frame_id, 'Y'].iloc[0])
-            # draw line on current frame of movie
-            movie_frame_num = len(movie_rgb[:,0,0])
-            for j in range(movie_frame_num):
-                cv2.line(movie_rgb[j], (x1, y1), (x2, y2), color=(0,0,255), thickness=2)
-                # cv2 uses BGR colour
-    tf.imwrite('movie.tiff', movie_rgb, imagej=True, metadata={'axes': 'ZCYX'})
+        # Keep y-axis for the first subplot in each column
+        if i % ncols == 0:
+            # Set row y-axis
+            ax.set_yticks([min(frames),max(frames)])
+            # Define minor ticks at 10% intervals
+            minor_ticks = np.linspace(min(frames), max(frames), 11) # 10% intervals  
+            # Set minor ticks
+            ax.set_yticks(minor_ticks, minor=True)
+            # Hide other axes
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+        else:
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+            ax.set_yticks([])  # Hide y-ticks for other subplots
+        ax.set_xticks([])  # Hide x-ticks for all subplots
+        ax.invert_yaxis()  # Flip y-axis
+    # Hide unused subplots
+    for j in range(len(family_ids), len(axes)):
+        axes[j].axis('off')
+    
+    #seaborn.despine(left=False, bottom=True, right=True)
+
+    plt.tight_layout()
+    # Change inline graphics setting in python > preferences > IPython Console > Graphics
+    plt.savefig(save_path)
+    plt.show()

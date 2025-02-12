@@ -48,25 +48,20 @@ for file_id in range(len(basenames)): # goes through every file
     
     for fr in range(masks.shape[0]): # goes through every frame
         current_frame = masks[fr]  # Shape: (height, width)
-        blank_frame=np.zeros(current_frame.shape)
+        new_current_frame=np.zeros(current_frame.shape)
 
         # get array of all mask IDs (excluding background with value 0)
         mask_ids = np.unique(current_frame[current_frame != 0])
-        for i in mask_ids:
+        for mask_id in mask_ids:
             #print(f'frame: {fr+1}, mask: {i}')
             # Should have specific frame and mask
-            track_id = tracks.loc[(tracks['fr'] == fr + 1) & (tracks['mask_id'] == i), 'family_id']
-            if len(track_id) == 0: # spots with no associated track
-                # [0,0,mask_id,fr,0,0,False,0,0,0,''] # whole row
-                # this is for masks that do not have an associated track
-                # so are not passed by the Jython script
-                # this can be removed if these rows are later included in script
-                track_id=-1
-            else: # spots with track
-                track_id = track_id.iloc[0]
+            family_id = tracks.loc[(tracks['fr'] == fr + 1) & (tracks['mask_id'] == mask_id), 'family_id']
             
-            blank_frame[current_frame == i] = track_id + 1
-        masks[fr] = blank_frame # save mask to movie
+            if len(family_id) != 0:
+                family_id = family_id.iloc[0]
+                new_current_frame[current_frame == mask_id] = family_id
+        
+        masks[fr] = new_current_frame # save mask to movie
         
     tf.imwrite(save_path, masks)
     print(f"Saved: {save_path}")

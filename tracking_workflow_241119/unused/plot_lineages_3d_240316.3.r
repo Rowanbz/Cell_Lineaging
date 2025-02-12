@@ -4,7 +4,7 @@
 py_col <- c('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2',
  '#7f7f7f', '#bcbd22', '#17becf')
 
-d <- read.csv("//Users/u2260235/Documents/Y3 Project/tracking_workflow_241119/3_tracks/out2.csv")
+d <- read.csv("//Users/u2260235/Documents/Y3 Project/tracking_workflow_241119/unused/out2.csv")
 d$edge = as.logical(d$edge=="True")
 track_at_edge <- tapply(d$edge, d$track_id, any) # an array of logicals (TRUE/FALSE) with the length of the number of tracks, representing whether each track touches an edge
 
