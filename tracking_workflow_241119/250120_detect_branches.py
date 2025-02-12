@@ -11,6 +11,8 @@ import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
 import os
+import json
+from networkx.readwrite import cytoscape_data
 
 def getfilelist (path, filetype):
     file_list = [os.path.join(path, f)
@@ -24,6 +26,7 @@ def getfilelist (path, filetype):
 
 track_dir = "/Users/u2260235/Documents/Y3 Project/tracking_workflow_241119/5_tracks_revised"
 save_dir = "/Users/u2260235/Documents/Y3 Project/tracking_workflow_241119/6_tracks_revised_2"
+cyto_dir = "/Users/u2260235/Documents/Y3 Project/tracking_workflow_241119/9_edge_cyto"
 
 track_files=getfilelist(track_dir, 'csv')
 basenames = [
@@ -38,6 +41,7 @@ for file_id in range(len(basenames)): # goes through every file
     print(f'Processing file: {basenames[file_id]}')
     track_path = track_dir + '/' + basenames[file_id] + '_tracks.csv'
     save_path = save_dir + '/' + basenames[file_id] + '_tracks.csv'
+    cyto_path = cyto_dir + '/' +basenames[file_id] + '.gml'
     
     tracks = pd.read_csv(track_path)
     
@@ -131,7 +135,7 @@ for file_id in range(len(basenames)): # goes through every file
             if pd.notna(target):  # Only add edge if target is not NaN
                 G.add_edge(spot_id, int(target))
     
-    # Find weakly connected nodes
+    # Find weakly connected nodes to get division code
     family_mapping = {}
     for family_id, component in enumerate(nx.weakly_connected_components(G), start=1):
         for node in component:
@@ -152,11 +156,20 @@ for file_id in range(len(basenames)): # goes through every file
             division_code[children[0]] = division_code[parent]
     tracks['division_code'] = tracks['spot_id'].map(division_code)
     
+    # not intepreting as string so trying to force this
+    tracks['division_code'] = 'D_' + tracks['division_code']
+    # doing this seems to create very strange formatting
+    #convert_dict = {'division_code': str}
+
+    
     # Saves tracks file
     tracks.to_csv(save_path, index=False)
-    
-    # need some kind of generation id e.g. 0001
-    # this needs to change along the length of a track too
+    # Saves network as json
+    nx.write_gml(G, cyto_path)
+    #cy_data = cytoscape_data(G)
+    #with open(cyto_path, "w") as f:
+    #    json.dump(cy_data, f, indent=4)
+
     # Consider changing track_cells_250115 so that area and mean are recorded
     
     # Check success rate
@@ -164,8 +177,8 @@ for file_id in range(len(basenames)): # goes through every file
     print(f'Total branches detected: {branch_total}')
     print(f'Total branches resolved: {branch_parent_found_total}')
     print('\n')
-
-files_branch_total = files_branch_total + branch_total
-files_branch_parent_found_total = files_branch_parent_found_total + branch_parent_found_total
+    # increment total resolved and detected counts
+    files_branch_total = files_branch_total + branch_total
+    files_branch_parent_found_total = files_branch_parent_found_total + branch_parent_found_total
 resolved_percent = (files_branch_parent_found_total/files_branch_total)*100
-print(f'Detected/Resolved: {files_branch_parent_found_total}/{files_branch_total} ({resolved_percent}%)')
+print(f'Resolved/Detected: {files_branch_parent_found_total}/{files_branch_total} ({resolved_percent}%)')

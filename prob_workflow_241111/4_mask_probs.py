@@ -5,6 +5,8 @@ Created on Thu Oct 24 19:01:09 2024
 
 @author: u2260235
 """
+# NOTE TO SELF - ISSUE WITH PROBS CSV FILE: IF MASK_ID GOES ABOVE 127 IN 1 FRAME IT WRAPS AROUND TO -128
+
 import numpy as np
 import pandas as pd
 import tifffile as tf
@@ -52,7 +54,7 @@ for file_indx in range(len(mask_files)): # goes through every file
     masks_3d = tf.imread(mask_files[file_indx])  # Shape: (time, height, width)
 
     # create output arrays
-    mask_classes = np.zeros_like(masks_3d, dtype=np.uint8)  # Shape: (frame, height, width)
+    mask_classes = np.zeros_like(masks_3d, dtype=np.uint16)  # Shape: (frame, height, width)
     mask_probabilities = np.zeros_like(class_probs, dtype=np.float64)  # Shape: (frame, channel, height, width)
     channel_mask_classes = np.zeros_like(class_probs, dtype=np.float64)  # Shape: (frame, channel, height, width)
     csv_data = []
@@ -106,7 +108,7 @@ for file_indx in range(len(mask_files)): # goes through every file
     # will expect a file of 311 MB with test data
     tf.imwrite(
     file_output_mask_classes_separate,
-    np.round(255 * channel_mask_classes).astype(np.uint8),
+    np.round(255 * channel_mask_classes).astype(np.uint16),
     imagej=True,
     metadata={
         'axes': 'TCYX',
