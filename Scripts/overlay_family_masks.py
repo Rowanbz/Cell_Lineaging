@@ -2,6 +2,8 @@ from ij.plugin import Concatenator, HyperStackConverter
 from ij import WindowManager, IJ
 import os
 
+print('Overlaying masks (Fiji)')
+
 def getfilelist (path, filetype):
     file_list = [os.path.join(path, f)
     for f in os.listdir(path)
@@ -50,7 +52,8 @@ for file_id in range(len(basenames)): # goes through every file
     IJ.run(imp3, "Grays", "")
     imp3.setC(2)
     IJ.run(imp3, "glasbey on dark reduced brightness", "")
-    IJ.run("Brightness/Contrast...")
+    #imp3.setDisplayRange(0, 255)  # or whatever min/max values are appropriate
+    #IJ.run("Brightness/Contrast...")
     IJ.resetMinAndMax(imp3)
     imp3.show()
     # flipping channels after showing makes resetminmax apply properly:
