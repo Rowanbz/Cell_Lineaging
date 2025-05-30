@@ -6,7 +6,7 @@ Created on Tue Jan 14 13:59:59 2025
 @author: u2260235
 """
 
-def cell_mask_label(mask_dir, track_dir, save_dir, column_name):
+def cell_mask_label(mask_dir, track_dir, branch_dir, output_dir):
     import numpy as np
     import matplotlib.pyplot as plt
     import os
@@ -27,12 +27,13 @@ def cell_mask_label(mask_dir, track_dir, save_dir, column_name):
     ]
     
     #%%
-    os.makedirs(save_dir, exist_ok=True) # creates output folder
+    os.makedirs(output_dir, exist_ok=True) # creates output folder
     
     for file_id in range(len(basenames)): # goes through every file
         mask_path = mask_dir + '/' + basenames[file_id] + '_masks.tiff'
         track_path = track_dir + '/' + basenames[file_id] + '_tracks.csv'
-        save_path = save_dir + '/' + basenames[file_id] + '_masks.tiff'
+        branch_path = track_dir + '/' + basenames[file_id] + '_branches.csv'
+        output_path = output_dir + '/' + basenames[file_id] + '_masks.tiff'
     
         print(f"Processing file: {mask_files[file_id]}")
         masks = tf.imread(mask_path)
@@ -49,7 +50,12 @@ def cell_mask_label(mask_dir, track_dir, save_dir, column_name):
             for i in mask_ids:
                 #print(f'frame: {fr+1}, mask: {i}')
                 # Should have specific frame and mask
-                label_id = tracks.loc[(tracks['fr'] == fr + 1) & (tracks['mask_id'] == i), column_name]
+                current_mask = tracks.loc[(tracks['fr'] == fr + 1) & (tracks['mask_id'] == i)]
+                
+                family_id = 
+                division_code = 
+                
+                
                 if len(label_id) == 0: # spots with no associated track
                     # [0,0,mask_id,fr,0,0,False,0,0,0,''] # whole row
                     # this is for masks that do not have an associated track
@@ -58,9 +64,9 @@ def cell_mask_label(mask_dir, track_dir, save_dir, column_name):
                     label_id=-1
                 else: # spots with track
                     label_id = label_id.iloc[0]
-    
+                
                 blank_frame[current_frame == i] = label_id + 1
             masks[fr] = blank_frame # save mask to movie
             
-        tf.imwrite(save_path, masks)
-        print(f"Saved: {save_path}")
+        tf.imwrite(output_path, masks)
+        print(f"Saved: {output_path}")

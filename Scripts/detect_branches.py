@@ -1,4 +1,4 @@
-def detect_branches(track_dir, family_dir, max_search_radius):
+def detect_branches(track_dir, family_dir, max_search_radius, mass_tolerance):
     import numpy as np
     import pandas as pd
     import networkx as nx
@@ -11,29 +11,40 @@ def detect_branches(track_dir, family_dir, max_search_radius):
         if f.endswith(str('.'+filetype))]
         return file_list
     
-    def detect_possible_mitosis(tracks, frames_checked=4, dead_allowed=2):
-        track_ids = np.unique(tracks['track_id'])
-        for track_id in track_ids:
-            current_track = tracks.loc[(tracks['track_id'] == track_id)]
-            # mitotic=2, dead=3
-            # list for higher efficiency
-            frame_indices = current_track.index.to_list()
-            class_ids = current_track['class_id'].to_list()
-            frames = current_track['fr'].to_list()
+    def find_parent(first_row, cframe, mass_tolerance):
+        daughter_id = first_row['spot_id']
+        daughter_mass = first_row['mass']
+        x0 = first_row['X']
+        y0 = first_row['Y']
+        r = 0
+        found = False
+        
+        cframe = tracks.loc[tracks['fr'] == first_row['fr'] - 1].copy()
+        # Calculate distances and filter by max search radius
+        cframe['distance'] = ((cframe['X'] - x0)**2 + (cframe['Y'] - y0)**2)**0.5
+        parent_candidates = cframe[(cframe['distance'] <= max_search_radius) & (cframe['class_id'] == 2)]
+        # Sort by distance
+        parent_candidates = parent_candidates.sort_values('distance')
+
+        # Iterate through potential parents
+        for _, parent_row in parent_candidates.iterrows():
+            parent_mass = parent_row['mass']
+            parent_id = parent_row['spot_id']
+            # Compares masses
+            if mass_check(daughter_mass, parent_mass, mass_tolerance):
+                return parent_id
+        return None
             
-            for i, frame in enumerate(frames):
-                checked_frames = np.arange(frame, frame+frames_checked)
-                # corresponding class_ids
-                class_ids_checked = current_track[current_track['fr'].isin(checked_frames)]['class_id'].values
-                
-                total_checked = len(class_ids_checked)
-                dead_count = np.sum(class_ids_checked == 3)
-                total_count = np.sum(class_ids_checked == 2) + dead_count
-                # check if all are mitotic/dead and no more than a certain amound dead
-                if total_count==total_checked and dead_allowed >= dead_count:
-                    tracks.at[frame_indices[i], 'm_detected'] = True
-                
-        return tracks
+            
+    def mass_check(daughter_mass, parent_mass, mass_tolerance):
+        conserved = False
+        lower_bound = 2*daughter_mass * (1 - mass_tolerance)
+        upper_bound = 2*daughter_mass * (1 + mass_tolerance)
+        
+        if parent_mass > lower_bound and parent_mass < upper_bound:
+            conserved = True
+        return conserved
+            
     
     #%%
     os.makedirs(family_dir, exist_ok=True) # creates output folder
@@ -55,25 +66,114 @@ def detect_branches(track_dir, family_dir, max_search_radius):
         tracks = pd.read_csv(track_path)
         #print(f"Columns in {track_path}: {tracks.columns.tolist()}")
         
+        track_ids = np.unique(tracks['track_id'])
         
         branch_total = 0
         branch_parent_found_total = 0
         
         #%%
         # Assigns edges to existing tracks
-        tracks['m_detected']=False      
         tracks['family_id']=np.nan
         tracks['division_code']=np.nan
-        tracks['targets']=np.nan # id of child cells
-
+        tracks['branch_id']=np.nan
+        tracks['target_1']=np.nan
+        tracks['target_2']=np.nan
+        
         #frames0 = frames[frames != np.max(frames)] # logical indexing to remove last frame
         
-        # identfies frames where the cell appears to have just divided
-        detect_possible_mitosis(tracks)
+        # assigns target for each spot in track
+        for track_id in track_ids:
+            ctrack = tracks.loc[(tracks['track_id'] == track_id)]
+            tframes = np.unique(ctrack['fr'])
+            #tframes = tframes[tframes != np.max(tframes)] # logical indexing to remove last frame
+            
+            for i in range(len(tframes) - 1):
+                # for each frame, set target_1 to spot_id of the next frame
+                next_frame = tframes[i + 1]  
+                
+                # get spot_id of next frame
+                target_1 = ctrack.loc[(ctrack['fr'] == next_frame), 'spot_id'].iloc[0]
+                
+                tracks.loc[(tracks['fr'] == tframes[i]) & (tracks['track_id'] == track_id), 'target_1'] = target_1
+                #print(f'track: {track_id}, frame: {tframes[i]}')
+                
         
+        
+        #%%
+        # Detects branches
+        for track_id in track_ids:
+            #print(track_id)
+            current_track = tracks.loc[(tracks['track_id'] == track_id)]
+            
+            # Detect tracks that do not have 1st fr == 0, they must also be mitotic
+            first_row = current_track.sort_values('fr').iloc[0]
 
+            # Mitotic cell appears part way through
+            if first_row['fr'] != 1 and first_row['class_id'] == 2:
+                #branch_total += 1
+                #print('Branch start detected:')
+                #print('frame: ' + str(first_row['fr']))
+                #print('track: ' + str(first_row['track_id']))
+                # Select previous frame
+                cframe = tracks.loc[(tracks['fr'] == first_row['fr']-1)]
+                
+                parent_id=find_parent(first_row, cframe, mass_tolerance)
+                if parent_id is not None:
+                    daughter_id = first_row['spot_id']
+                    # write target id
+                    tracks.loc[tracks['spot_id'] == parent_id, 'target_2'] = daughter_id
+                
+        #%%
+        # Create NetworkX graph from the pandas dataframe.
+        # Create a directed graph
+        G = nx.DiGraph()
+        
+        # Add nodes (each spot_id is a node)
+        for spot in tracks['spot_id']:
+            G.add_node(spot)
+        
+        # Add edges (connect spot_id to target_1 and target_2 if they exist)
+        for _, row in tracks.iterrows():
+            spot_id = row['spot_id']
+            
+            for target_col in ['target_1', 'target_2']:
+                target = row[target_col]
+                if pd.notna(target):  # Only add edge if target is not NaN
+                    G.add_edge(spot_id, int(target))
+        
+        # Find weakly connected nodes to get division code
+        family_mapping = {}
+        for family_id, component in enumerate(nx.weakly_connected_components(G), start=1):
+            for node in component:
+                family_mapping[node] = family_id  # Assign the same family_id to all nodes in this component
+        tracks['family_id'] = tracks['spot_id'].map(family_mapping)
+        
+        division_code={}
+        # Assign root node a default division code of '0'
+        for root in [n for n, d in G.in_degree() if d == 0]:  # Nodes with no parent
+            division_code[root] = '0'
+        # Traverse the graph to assign division codes
+        for parent in nx.topological_sort(G):  # Ensures correct order
+            children = list(G.successors(parent))
+            if len(children) == 2:  # Branching event detected
+                division_code[children[0]] = division_code[parent] + '0'
+                division_code[children[1]] = division_code[parent] + '1'
+            elif len(children) == 1:  # Single successor, inherit division code
+                division_code[children[0]] = division_code[parent]
+        tracks['division_code'] = tracks['spot_id'].map(division_code)
+        
+        # not intepreting as string so trying to force this
+        tracks['division_code'] = 'D_' + tracks['division_code']
+        # doing this seems to create very strange formatting
+        #convert_dict = {'division_code': str}
+    
+        # appends ids to make branch_id (single cell lifetime)
+        tracks['branch_id'] = tracks['family_id'].astype(int).astype(str) + tracks['division_code']
+
+        
         # Saves tracks file
         tracks.to_csv(save_path, index=False)
+        
         '''
         # Check success rate
         print(f'=== Search radius: {max_search_radius} ===')

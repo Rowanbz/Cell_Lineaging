@@ -93,7 +93,7 @@ def add_probs_to_tracks(track_dir, classes_dir, save_dir):
         df = cleanup_dead(df) # check if cells are falsely labelled as dead
         
         df = df[df['mask_id'] != 0] # drops bg if it is somehow in a track (pos7)
-        df['class_id'] = df['class_id'].fillna(0) # bg row
+        df['class_id'] = df['class_id'].fillna(1) # bg row. If it has been detected as a mask we assume it is dim interphase???
 
         return df
     
