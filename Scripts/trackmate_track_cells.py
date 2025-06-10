@@ -1,4 +1,9 @@
 import os
+import sys
+
+log_path = ('/Users/u2260235/Documents/Y3 Project/error.txt')
+sys.stdout = open(log_path, "w")
+sys.stderr = sys.stdout  # redirect errors too
 
 from ij import IJ
 from ij import WindowManager
@@ -52,6 +57,8 @@ os.sys.setdefaultencoding('utf-8')
 #@ String output_dir
 #@ Integer linking_max_distance
 
+skip_existing = True
+
 mask_files = [f for f in os.listdir(mask_dir) if f.endswith('.tiff')]
 
 
@@ -59,6 +66,13 @@ if not os.path.exists(output_dir): # creates output folder
     os.makedirs(output_dir)
 
 for mask_file in mask_files:  # Goes through every file
+    out_name = mask_file.replace("_masks.tiff", "_tracks.csv")
+    output_path = os.path.join(output_dir, out_name)
+
+    if skip_existing and os.path.exists(output_path):
+        print("Skipping " + output_path + " (already processed)")
+        continue
+
     print("Processing file: " + str(mask_file))
 
     ############## Parameters ###############
@@ -68,8 +82,7 @@ for mask_file in mask_files:  # Goes through every file
     mask_path = os.path.join(mask_dir, mask_file)
     imp = IJ.openImage(mask_path)
 
-    out_name = mask_file.replace("_masks.tiff", "_tracks.csv")
-    output_path = os.path.join(output_dir, out_name)
+
 
     # imp.show()
     [w, h, nch, nsl, nfr] = imp.getDimensions()
@@ -93,10 +106,10 @@ for mask_file in mask_files:  # Goes through every file
     settings.trackerSettings = settings.trackerFactory.getDefaultSettings()  # almost good enough
     settings.trackerSettings['ALLOW_TRACK_SPLITTING'] = False
     settings.trackerSettings['ALLOW_TRACK_MERGING'] = False
-    settings.trackerSettings['LINKING_MAX_DISTANCE'] = 50.0
+    settings.trackerSettings['LINKING_MAX_DISTANCE'] = float(linking_max_distance)
     settings.trackerSettings['ALLOW_GAP_CLOSING'] = True
     settings.trackerSettings['MAX_FRAME_GAP'] = 5
-    settings.trackerSettings['GAP_CLOSING_MAX_DISTANCE'] = 70.0
+    settings.trackerSettings['GAP_CLOSING_MAX_DISTANCE'] = 80.0
 
     # Add ALL the feature analyzers known to TrackMate. They will
     # yield numerical features for the results, such as speed, mean intensity etc.
