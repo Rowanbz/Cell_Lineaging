@@ -58,11 +58,26 @@ def plot_lineages(input_dir, output_dir):
         #ax.text(x,min_fr-0.5,division_code, horizontalalignment='center')# label with division code
         #ax.text(x,min_fr-0.55,min_fr, horizontalalignment='center')# label  min fr
         #ax.text(x,max_fr,max_fr, horizontalalignment='center')# label  max fr
+        
+        # annotate class
+        #  plot vertical line
+        ax.plot([x, x], [min_fr, max_fr+1], color=col, linewidth=2)
+        
+        # Add dots and crosses over the lines for mitotic and dead cells
+        for _, row in c_cell.iterrows():
+            fr = row['fr']
+            class_id = row.get('class_id', None)
+            if class_id == 2:  # Mitotic
+                ax.plot(x, fr, 'o', color='grey', alpha=0.5, markersize=3, zorder=5)
+            elif class_id == 3:  # Dead
+                ax.plot(x, fr, 'x', color='black', alpha=0.5, markersize=4, zorder=5)
+
     
     #%%
     
     
     offset = 1  # Initially offsets by this amount
+    print('Plotting 2D Lineages')
     ### 1. Process all files
     for filename in os.listdir(input_dir):
         if filename.endswith('.csv'):

@@ -1,7 +1,0 @@
-pyimagej==1.2.1
-mvn==3.9.9
-scyjava
-cellpose
-wakepy
-
-conda install -c conda-forge openjdk=11.0.22

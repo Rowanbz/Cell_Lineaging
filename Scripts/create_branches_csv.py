@@ -63,15 +63,29 @@ def create_branches_csv(input_dir, output_dir):
         return branches
     
     def divides_at_end(current_branch):
-        return not pd.isna(current_branch['target_2'].iloc[-1])
+        # Return 2 if last spot has multiple children
+        targets_str = current_branch['targets'].iloc[-1]
+        targets_str=str(targets_str)
+        if not targets_str:
+            return False
+        return len(targets_str.split('_')) > 1
+
     def divides_at_start(current_branch, tracks):
-        spot_id = current_branch['spot_id'].iloc[0]
+        """Return True if this cell is a daughter of any cell in the previous frame."""
+        spot_id = str(current_branch['spot_id'].iloc[0])
         start_frame = current_branch['fr'].iloc[0]
         prev_frame = start_frame - 1
-        # look in previous frame for any cell that points to this spot_id
+    
         prev_frame_rows = tracks[tracks['fr'] == prev_frame]
-        return ((prev_frame_rows['target_1'] == spot_id) | 
-                (prev_frame_rows['target_2'] == spot_id)).any()
+    
+        for targets_str in prev_frame_rows['targets']:
+            targets_str=str(targets_str)
+            if not isinstance(targets_str, str) or not targets_str:
+                continue
+            if spot_id in targets_str.split('_'):
+                return True
+        return False
+
     
     #%%
     os.makedirs(output_dir, exist_ok=True) # creates output folder

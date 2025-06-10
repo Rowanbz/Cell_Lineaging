@@ -6,7 +6,7 @@ Created on Thu Oct 24 19:01:09 2024
 @author: u2260235
 """
 
-def mask_probs(mask_dir, prob_dir, csv_dir, mask_classes_dir, save_mask_classes=True, save_classes_csv=True, debris_size = 200, skip_existing=False):
+def mask_probs(mask_dir, prob_dir, csv_dir, mask_classes_dir, save_mask_classes=False, save_classes_csv=True, debris_size = 200, skip_existing=False):
     import numpy as np
     import pandas as pd
     import tifffile as tf
@@ -21,7 +21,7 @@ def mask_probs(mask_dir, prob_dir, csv_dir, mask_classes_dir, save_mask_classes=
             print(f"Processing file: {filename}")
             prob_path = os.path.join(prob_dir, filename)
             # get basename (without "_prob" attached)
-            basename = filename.replace('_prob.tiff', '')
+            basename = filename.replace('_probs.tiff', '')
             # create other paths
             mask_path = os.path.join(mask_dir, basename + '_masks.tiff')
             mask_classes_path = os.path.join(mask_classes_dir, basename + '_masks_classes.tiff')
@@ -66,7 +66,10 @@ def mask_probs(mask_dir, prob_dir, csv_dir, mask_classes_dir, save_mask_classes=
                 # Calculate mean probabilities for each mask and channel
                 for i, mask_id in enumerate(mask_ids):
                     mask_pixels = frame_probs[:, frame_seg == mask_id]  # Pixels for each channel
-                    mask_mean_probs[i] = mask_pixels.mean(axis=1)  # Mean probability per channel
+                    #mask_mean_probs[i] = mask_pixels.mean(axis=1)  # Mean probability per channel
+                    # Using median instead as there are outliers
+                    mask_mean_probs[i] = np.median(mask_pixels, axis=1)
+  # Mean probability per channel
         
                 # Assign class IDs based on the highest mean probability
                 max_channels = np.argmax(mask_mean_probs, axis=1)

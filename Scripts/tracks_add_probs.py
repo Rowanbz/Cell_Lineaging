@@ -171,6 +171,7 @@ def add_probs_to_tracks(track_dir, classes_dir, save_dir):
     ]
     
     #basenames = ['240408_240411_WT_150nM_pos33']
+    print('Concatenating track and probability files')
     
     for file_id in range(len(basenames)): # goes through every file
         print(f'Processing: {basenames[file_id]}')

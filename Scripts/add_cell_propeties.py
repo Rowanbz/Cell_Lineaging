@@ -7,7 +7,7 @@ Created on Thu Feb 13 17:28:11 2025
 """
 def add_properties(source_dir, mask_dir, track_dir, save_dir, skip_existing=False):
     import numpy as np
-    import matplotlib.pyplot as plt
+    #import matplotlib.pyplot as plt
     import pandas as pd
     import os
     import tifffile as tf
