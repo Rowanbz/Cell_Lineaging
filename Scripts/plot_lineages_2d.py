@@ -12,138 +12,138 @@ def plot_lineages(input_dir, output_dir):
     import os
     import math
     import matplotlib.pyplot as plt
-    
+    from collections import defaultdict
+
     py_col = ('#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2',
-     '#7f7f7f', '#bcbd22', '#17becf')
-    
-    def getfilelist (path, filetype):
-        file_list = [os.path.join(path, f)
-        for f in os.listdir(path)
-        if f.endswith(str('.'+filetype))]
-        return file_list
+              '#7f7f7f', '#bcbd22', '#17becf')
+
     def getoffset(full_division_code, x, default_offset):
-        # remove first character - will always be 0
-        division_code = full_division_code[1:]
-        length = len(division_code)
+        division_code = full_division_code[1:]  # remove first char
         dx = default_offset
-        for i in range(length):
+        for i in range(len(division_code)):
             if division_code[i] == '0':
-                x = x-dx
+                x = x - dx
             if division_code[i] == '1':
-                x = x+dx
-            dx = dx*0.5
+                x = x + dx
+            dx = dx * 0.5
         return x, dx
-    def plotcell(division_code, x, ax, default_offset, family_df, col):
+
+    def plotcell(division_code, x, ax, default_offset, family_df, col, family_id):
         c_cell = family_df.loc[(family_df['division_code'] == division_code)]
         min_fr = min(c_cell['fr'])
         max_fr = max(c_cell['fr'])
-        # draw a vertical line from min_fr to max_fr for each frame
-        # line should be offset left or right
-        # Offset halves with each generation
-        x_dx=[0,0]
-        if len(division_code) > 1: # cells with parents
+
+        x_dx = [0, 0]
+        if len(division_code) > 1:
             x_dx = getoffset(division_code, 0, offset)
-            x=x_dx[0]
-            dx=x_dx[1]
-            #parent_code = division_code[:-1]
-            # check for if the daughter is the left one
+            x = x_dx[0]
+            dx = x_dx[1]
             if division_code[-1] == '0':
-                # link with horizontal lines
-                ax.plot([x, x+4*dx], [min_fr, min_fr], color=col, linewidth=2)
-            ax.text(x,min_fr-0.55,min_fr, horizontalalignment='center')# label  min fr
+                ax.plot([x, x + 4 * dx], [min_fr, min_fr], color=col, linewidth=2)
+            ax.text(x, min_fr - 0.55, min_fr, horizontalalignment='center')
         else:
-            ax.text(x,min_fr-0.55,family_id, horizontalalignment='center', color='gray')# label f
-        #  plot vertical line
-        ax.plot([x, x], [min_fr, max_fr+1], color=col, linewidth=2)
-        #ax.text(x,min_fr-0.5,division_code, horizontalalignment='center')# label with division code
-        #ax.text(x,min_fr-0.55,min_fr, horizontalalignment='center')# label  min fr
-        #ax.text(x,max_fr,max_fr, horizontalalignment='center')# label  max fr
-        
-        # annotate class
-        #  plot vertical line
-        ax.plot([x, x], [min_fr, max_fr+1], color=col, linewidth=2)
-        
-        # Add dots and crosses over the lines for mitotic and dead cells
+            ax.text(x, min_fr - 0.55, family_id, horizontalalignment='center', color='gray')
+
+        # Plot vertical line
+        ax.plot([x, x], [min_fr, max_fr + 1], color=col, linewidth=2)
+
         for _, row in c_cell.iterrows():
             fr = row['fr']
             class_id = row.get('class_id', None)
-            if class_id == 2:  # Mitotic
+            if class_id == 2:
                 ax.plot(x, fr, 'o', color='grey', alpha=0.5, markersize=3, zorder=5)
-            elif class_id == 3:  # Dead
+            elif class_id == 3:
                 ax.plot(x, fr, 'x', color='black', alpha=0.5, markersize=4, zorder=5)
 
-    
-    #%%
-    
-    
-    offset = 1  # Initially offsets by this amount
+    offset = 1
     print('Plotting 2D Lineages')
-    ### 1. Process all files
+
     for filename in os.listdir(input_dir):
         if filename.endswith('.csv'):
             print(f'Processing file: {filename}')
             output_filename = os.path.splitext(filename)[0] + "_lineages.png"
             save_path = os.path.join(output_dir, output_filename)
             track_path = os.path.join(input_dir, filename)
-        
+
             tracks = pd.read_csv(track_path)
-            
-            # initialise data
             tracks['division_code'] = tracks['division_code'].astype(str).str.replace('D_', '')
             family_ids = np.unique(tracks['family_id'])
-            family_n = len(family_ids)
             frames = np.unique(tracks['fr'])
-            
-            ncols = min(22, family_n) # max 22 cols
-            nrows = math.ceil(family_n/ncols)
-            
-            # create axis bar for number of frames
-            
-            fig, axes = plt.subplots(nrows,ncols, figsize=(ncols * 1, nrows * 1))
-            axes = np.array(axes).reshape(-1)  # Flatten for 1D indexing
-            
-            for i in range(len(family_ids)):
+
+            # STEP 1: Build fusion map
+            target_map = defaultdict(list)
+            for _, row in tracks.iterrows():
+                targets = row.get('targets', '')
+                if isinstance(targets, str) and targets:
+                    for t in targets.split('_'):
+                        try:
+                            target_map[int(t)].append(int(row['spot_id']))
+                        except ValueError:
+                            continue
+            fusion_targets = {t: s for t, s in target_map.items() if len(s) > 1}
+
+            ncols = min(22, len(family_ids))
+            nrows = math.ceil(len(family_ids) / ncols)
+
+            fig, axes = plt.subplots(nrows, ncols, figsize=(ncols * 1, nrows * 1))
+            axes = np.array(axes).reshape(-1)
+
+            for i, family_id in enumerate(family_ids):
                 ax = axes[i]
-                family_id=family_ids[i]
                 family = tracks.loc[(tracks['family_id'] == family_id)]
                 cell_ids = np.unique(family['division_code'])
-                col = py_col[i%len(py_col)]
-                
-                for j in range(len(cell_ids)):
-                    #print(cell_ids[i])
-                    # plot cell function
-                    plotcell(cell_ids[j], 0, ax, offset, family, col)
-        
-                # Set the y-axis range to match the frame range
+                col = py_col[i % len(py_col)]
+
+                for division_code in cell_ids:
+                    plotcell(division_code, 0, ax, offset, family, col, family_id)
+
+                # STEP 2: Draw fusion links in this family
+                for target_id, source_ids in fusion_targets.items():
+                    if target_id not in family['spot_id'].values:
+                        continue
+                    target_row = family.loc[family['spot_id'] == target_id].iloc[0]
+                    target_code = target_row['division_code']
+                    target_fr = target_row['fr']
+                    target_x, _ = getoffset(target_code, 0, offset)
+
+                    for source_id in source_ids:
+                        if source_id not in family['spot_id'].values:
+                            continue
+                        source_row = family.loc[family['spot_id'] == source_id].iloc[0]
+                        source_code = source_row['division_code']
+                        source_fr = source_row['fr']
+                        source_x, _ = getoffset(source_code, 0, offset)
+
+                        # Draw dashed line and star
+                        ax.plot([source_x, source_x], [source_fr, target_fr],
+                                linestyle='--', color='black', linewidth=0.8, alpha=0.6)
+                    ax.plot(target_x, target_fr+8, marker='*', color='red', markersize=6, zorder=10)
+
+                # Format subplot
                 ax.set_ylim(min(frames), max(frames))
-            
-                # Keep y-axis for the first subplot in each column
                 if i % ncols == 0:
-                    # Set row y-axis
-                    ax.set_yticks([min(frames),max(frames)])
-                    # Define minor ticks at 10% intervals
-                    minor_ticks = np.linspace(min(frames), max(frames), 11) # 10% intervals  
-                    # Set minor ticks
-                    ax.set_yticks(minor_ticks, minor=True)
-                    # Hide other axes
+                    ax.set_yticks([min(frames), max(frames)])
+                    ax.set_yticks(np.linspace(min(frames), max(frames), 11), minor=True)
                     ax.spines['top'].set_visible(False)
                     ax.spines['right'].set_visible(False)
                     ax.spines['bottom'].set_visible(False)
                 else:
-                    ax.spines['top'].set_visible(False)
-                    ax.spines['right'].set_visible(False)
-                    ax.spines['bottom'].set_visible(False)
-                    ax.spines['left'].set_visible(False)
-                    ax.set_yticks([])  # Hide y-ticks for other subplots
-                ax.set_xticks([])  # Hide x-ticks for all subplots
-                ax.invert_yaxis()  # Flip y-axis
-            # Hide unused subplots
+                    for spine in ['top', 'right', 'bottom', 'left']:
+                        ax.spines[spine].set_visible(False)
+                    ax.set_yticks([])
+
+                ax.set_xticks([])
+                ax.invert_yaxis()
+
             for j in range(len(family_ids), len(axes)):
                 axes[j].axis('off')
-            
-            #seaborn.despine(left=False, bottom=True, right=True)
-        
+
             plt.tight_layout()
-            # Change inline graphics setting in python > preferences > IPython Console > Graphics
             plt.savefig(save_path)
             plt.show()
+
+
+
+
+
+

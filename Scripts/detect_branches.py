@@ -1,4 +1,4 @@
-def detect_branches(track_dir, family_dir, max_search_radius, mass_tolerance):
+def detect_branches(track_dir, family_dir, max_search_radius, mass_tolerance, detect_fusion=True):
     import numpy as np
     import pandas as pd
     import networkx as nx
@@ -30,7 +30,8 @@ def detect_branches(track_dir, family_dir, max_search_radius, mass_tolerance):
             parent_id = parent_row['spot_id']
             class_id = parent_row.get('class_id', None)
     
-            if class_id == 2 or significant_mass_drop(parent_mass, daughter_mass):
+            #if class_id == 2 or significant_mass_drop(parent_mass, daughter_mass):
+            if class_id == 2:
                 if mass_check(daughter_mass, parent_mass, mass_tolerance):
                     return parent_id
         return None
@@ -49,12 +50,72 @@ def detect_branches(track_dir, family_dir, max_search_radius, mass_tolerance):
         """
         return daughter_mass < 0.65 * parent_mass
 
+    def detect_fusions(tracks, max_search_radius, mass_tolerance):
+        """
+        Detects fusion events: when a track disappears and a nearby cell's mass increases.
+        """
+        print("Detecting fusions")
+        
+        # Get frame range
+        all_frames = np.sort(tracks['fr'].unique())
+    
+        for frame in all_frames[:-1]:
+            current_frame = tracks[tracks['fr'] == frame]
+            next_frame = tracks[tracks['fr'] == frame + 1]
+    
+            # Cells that disappear after this frame (no targets)
+            for _, row in current_frame.iterrows():
+                spot_id = row['spot_id']
+                
+                if spot_id == 14682:
+                    print('Hey!')
+                
+                if not isinstance(row['targets'], list) or len(row['targets']) == 0:
+                    x0, y0, m0 = row['X'], row['Y'], row['mass']
+                    
+                    # All possible candidates in next frame
+                    next_candidates = next_frame.copy()
+                    next_candidates['distance'] = np.sqrt((next_candidates['X'] - x0)**2 + (next_candidates['Y'] - y0)**2)
+                    
+                    # Only those nearby
+                    close_candidates = next_candidates[next_candidates['distance'] < max_search_radius]
+                    close_candidates = close_candidates.sort_values('distance')
+                    if spot_id == 14682:
+                        print(close_candidates)
+    
+                    for _, cand in close_candidates.iterrows():
+                        future_spot_id = cand['spot_id']
+                        # Previous mass of candidate
+                        future_track_id = cand['track_id']
+                        past_mass = tracks.loc[(tracks['track_id'] == future_track_id) & (tracks['fr'] == frame), 'mass']
+                        if spot_id == 14682:
+                            print(f'Past mass: {past_mass}')
+
+                        if not past_mass.empty:
+                            past_mass = past_mass.values[0]
+                        if spot_id == 14682:
+                            print(f'Past mass: {past_mass}')
+                            print(f"Present mass: {cand['mass']}")
+                            delta_mass = cand['mass'] - past_mass
+                            if spot_id == 14682:
+                                print(f'Delta mass: {delta_mass}')
+                                print(f'M0: {m0}')
+    
+                            # Check if delta mass ~ disappeared cell's mass
+                            if abs(delta_mass - m0) / m0 < mass_tolerance:
+                                # Fusion detected
+                                future_index = tracks.index[(tracks['spot_id'] == future_spot_id) & (tracks['fr'] == frame + 1)][0]
+                                tracks.at[future_index, 'targets'].append(int(spot_id))
+                                print(f"Fusion detected! {spot_id} into {future_spot_id} at frame {frame + 1}")
+                                break  # Only fuse to one target
+
 
     print('Detecting branches')
     os.makedirs(family_dir, exist_ok=True)
 
     track_files = getfilelist(track_dir, 'csv')
     basenames = [os.path.basename(f).replace("_tracks.csv", "") for f in track_files]
+    basenames = ['240408_240411_WT_150nM_pos35']
 
     for basename in basenames:
         print(f'Processing file: {basename}')
@@ -98,6 +159,11 @@ def detect_branches(track_dir, family_dir, max_search_radius, mass_tolerance):
                     daughter_id = first_row['spot_id']
                     parent_index = tracks.index[tracks['spot_id'] == parent_id][0]
                     tracks.at[parent_index, 'targets'].append(int(daughter_id))
+                    
+        # Detect Fusion
+        if detect_fusion:
+            detect_fusions(tracks, 100, 0.02)
+
 
         # Build graph
         G = nx.DiGraph()
@@ -135,7 +201,7 @@ def detect_branches(track_dir, family_dir, max_search_radius, mass_tolerance):
                 # Continuation
                 division_code[children[0]] = division_code[parent]
             if len(children) > 2:
-                print('Multipolar detected!')
+                print('Multipolar division detected!')
             elif len(children) > 1:
                 # Division (bipolar, tripolar, etc.)
                 for i, child in enumerate(children):

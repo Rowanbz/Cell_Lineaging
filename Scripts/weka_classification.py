@@ -13,6 +13,8 @@ if not os.path.exists(output_dir):
 
 tiff_files = [f for f in os.listdir(input_dir) if f.endswith('.tiff') or f.endswith('.tif')]
 
+#tiff_files = ['240522_C2_25_pos24.tiff']
+
 for tiff_file in tiff_files:
     input_path = os.path.join(input_dir, tiff_file)
     base_name = os.path.splitext(tiff_file)[0]
