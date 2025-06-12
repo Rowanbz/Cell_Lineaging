@@ -6,7 +6,7 @@ Created on Mon Jun  9 16:34:40 2025
 @author: u2260235
 """
 
-def plot_outcomes(branch_dir, group_string, mass, plt_type):
+def plot_outcomes(branch_dir, group_string):
     import numpy as np
     import matplotlib.pyplot as plt
     import pandas as pd
@@ -81,9 +81,8 @@ def plot_outcomes(branch_dir, group_string, mass, plt_type):
         for i, (label, row) in enumerate(outcome_counts.iterrows()):
             ax = axes[i]
             row.plot.pie(ax=ax, autopct='%1.1f%%', startangle=90, colormap='Set2')
-            ax.set_ylabel('')
-            ax.set_title(f"{label}\n(N={row.sum()})")
-
+            ax.set_ylabel('')  # Remove y-axis label
+            ax.set_title(label)
     
         # Hide any unused subplots
         for j in range(i + 1, len(axes)):
@@ -94,56 +93,6 @@ def plot_outcomes(branch_dir, group_string, mass, plt_type):
     
         # Optional: run stats tests
         stats_tests(outcome_counts)
-        
-    def outcome_pie_condition(df, mass_threshold):
-        df = pd.concat(df, ignore_index=True)
-    
-        # Remove unknown outcomes
-        df = df[df['outcome'] != 'u']
-    
-        # Categorize outcomes
-        outcome_order = ['normal', 'divided', 'arrested', 'died']
-        df['outcome'] = pd.Categorical(df['outcome'], categories=outcome_order, ordered=True)
-    
-        # Define multinucleation status based on threshold
-        df['mass_status'] = np.where(df['start_mass'] > mass_threshold, 'Multinucleated', 'Mononucleated')
-    
-        # Create combined label
-        df['label'] = df['cell_type'] + '_' + df['condition'].astype(str) + '_' + df['mass_status']
-    
-        # Count outcome frequencies
-        outcome_counts = df.groupby(['label', 'outcome']).size().unstack(fill_value=0)
-    
-        # Sort by cell type, condition, and mass status
-        def sort_key(label):
-            parts = label.split('_')
-            return (parts[0], int(parts[1]), parts[2])  # (cell_type, condition, mass_status)
-        sort_order = sorted(outcome_counts.index, key=sort_key)
-        outcome_counts = outcome_counts.loc[sort_order]
-    
-        # Plot pie charts
-        n = len(outcome_counts)
-        ncols = 2
-        nrows = (n + ncols - 1) // ncols
-    
-        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(ncols * 4, nrows * 4))
-        axes = axes.flatten()
-    
-        for i, (label, row) in enumerate(outcome_counts.iterrows()):
-            ax = axes[i]
-            row.plot.pie(ax=ax, autopct='%1.1f%%', startangle=90, colormap='Set2')
-            ax.set_ylabel('')
-            ax.set_title(f"{label}\n(N={row.sum()})")
-
-    
-        for j in range(i + 1, len(axes)):
-            axes[j].axis('off')
-    
-        plt.tight_layout()
-        plt.show()
-    
-        #stats_tests(outcome_counts)
-
     
     def stats_tests(outcome_counts):
         from scipy.stats import fisher_exact, chi2_contingency
@@ -194,10 +143,6 @@ def plot_outcomes(branch_dir, group_string, mass, plt_type):
         branches = pd.read_csv(branch_path)
         
         df.append(branches)
-    
-    if plt_type == 'pie_condition':
-        outcome_pie_condition(df, mass)
-    
-    if plt_type == 'pie':
-        outcome_pie(df)
+        
+    outcome_pie(df)
 

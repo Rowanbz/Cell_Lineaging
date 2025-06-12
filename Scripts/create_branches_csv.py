@@ -35,6 +35,8 @@ def create_branches_csv(input_dir, output_dir):
             start_frame = current_branch['fr'].iloc[0]
             end_frame = current_branch['fr'].iloc[-1]
             frames = end_frame-start_frame+1
+            start_mass = current_branch['mass'].iloc[0]
+            end_mass = current_branch['mass'].iloc[-1]
             start_class = current_branch['class_id'].iloc[0]
             end_class = current_branch['class_id'].iloc[-1]
             edge = current_branch['edge'].iloc[0]
@@ -50,6 +52,8 @@ def create_branches_csv(input_dir, output_dir):
                          ,'start_frame':[start_frame]
                          ,'end_frame':[end_frame]
                          ,'frames':[frames]
+                         ,'start_mass':[start_mass]
+                         ,'end_mass':[end_mass]
                          ,'start_class':[start_class]
                          ,'end_class':[end_class]
                          ,'edge':[edge]
